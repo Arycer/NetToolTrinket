@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "ae2trinket",
+  "version": "${version}",
+  "name": "NetToolTrinket",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/ae2trinket/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "me.arycer.ae2trinket.client.AE2TrinketClient"
+    ],
+    "main": [
+      "me.arycer.ae2trinket.AE2Trinket"
+    ]
+  },
+  "mixins": [
+    "ae2trinket.mixins.json",
+    {
+      "config": "ae2trinket.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "ae2": ">=15.4.10",
+    "trinkets": ">=3.7.2"
+  }
+}
