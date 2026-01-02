@@ -46,7 +46,7 @@ public class AE2Trinket implements ModInitializer {
             if (block instanceof CableBusBlock
                     && trinketComponent.isPresent()
                     && trinketComponent.get().isEquipped(AEItems.NETWORK_TOOL.asItem())
-                    && playerEntity.isSneaking()) {
+                    && !playerEntity.isSneaking()) {
                 List<Pair<SlotReference, ItemStack>> equipped = trinketComponent.get().getEquipped(AEItems.NETWORK_TOOL.asItem());
                 ItemStack networkToolStack = equipped.get(0).getRight();
 
