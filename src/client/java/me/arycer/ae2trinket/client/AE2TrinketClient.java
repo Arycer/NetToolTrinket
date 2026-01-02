@@ -15,6 +15,8 @@ import org.lwjgl.glfw.GLFW;
 
 public class AE2TrinketClient implements ClientModInitializer {
 
+    private static boolean wasPressed = false;
+
     public static final KeyBinding TERMINAL_TRINKET_KEYBINDING = new KeyBinding(
             "key.ae2trinket.terminal_trinket",
             GLFW.GLFW_KEY_LEFT_ALT,
@@ -28,9 +30,13 @@ public class AE2TrinketClient implements ClientModInitializer {
         KeyBindingHelper.registerKeyBinding(TERMINAL_TRINKET_KEYBINDING);
 
         ClientTickEvents.END_CLIENT_TICK.register(minecraftClient -> {
-            if (TERMINAL_TRINKET_KEYBINDING.isPressed() && minecraftClient.currentScreen == null) {
+            boolean isPressed = TERMINAL_TRINKET_KEYBINDING.isPressed();
+
+            if (isPressed && !wasPressed && minecraftClient.currentScreen == null) {
                 ClientPlayNetworking.send(new UseTerminalC2S());
             }
+
+            wasPressed = isPressed;
         });
     }
 

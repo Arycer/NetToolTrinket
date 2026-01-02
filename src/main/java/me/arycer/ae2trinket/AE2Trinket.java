@@ -8,6 +8,7 @@ import appeng.core.localization.PlayerMessages;
 import appeng.helpers.WirelessCraftingTerminalMenuHost;
 import appeng.helpers.WirelessTerminalMenuHost;
 import appeng.items.contents.NetworkToolMenuHost;
+import appeng.items.parts.PartItem;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -15,6 +16,8 @@ import appeng.menu.locator.MenuLocators;
 import appeng.menu.me.common.MEStorageMenu;
 import appeng.menu.me.items.WirelessCraftingTermMenu;
 import appeng.menu.me.networktool.NetworkStatusMenu;
+import appeng.parts.automation.UpgradeablePart;
+import appeng.parts.networking.CablePart;
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketComponent;
 import dev.emi.trinkets.api.TrinketsApi;
@@ -31,10 +34,13 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public class AE2Trinket implements ModInitializer {
 
@@ -42,6 +48,29 @@ public class AE2Trinket implements ModInitializer {
 
     public static Identifier id(String path) {
         return new Identifier(MOD_ID, path);
+    }
+
+    private static boolean checkTerminalPreconditions(WirelessTerminalItem item, ItemStack stack, PlayerEntity player) {
+        if (!stack.isEmpty() && stack.getItem() == item) {
+            if (item.getLinkedGrid(stack, player.getWorld(), player) == null) {
+                return false;
+            } else if (!item.hasPower(player, 0.5F, stack)) {
+                player.sendMessage(PlayerMessages.DeviceNotPowered.text(), true);
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    private static boolean checkNoParts(IPartHost host, Direction direction) {
+        if (host.getPart(direction) instanceof UpgradeablePart) {
+            return false;
+        }
+
+        return host.getPart(direction) == null;
     }
 
     @Override
@@ -75,7 +104,23 @@ public class AE2Trinket implements ModInitializer {
         });
 
         UseBlockCallback.EVENT.register((playerEntity, world, hand, blockHitResult) -> {
-            if (world.isClient) {
+            if (playerEntity.isHolding(AEItems.COLOR_APPLICATOR.asItem())
+                    || playerEntity.isHolding(AEItems.CERTUS_QUARTZ_WRENCH.asItem())
+                    || playerEntity.isHolding(AEItems.NETHER_QUARTZ_WRENCH.asItem())
+                    || playerEntity.isHolding(AEItems.MEMORY_CARD.asItem())) {
+                return ActionResult.PASS;
+            }
+
+            Predicate<ItemStack> predicate = stack -> {
+                if (!(stack.getItem() instanceof PartItem<?> partItem)) {
+                    return false;
+                }
+
+                Class<?> partClass = partItem.getPartClass();
+                return CablePart.class.isAssignableFrom(partClass) || UpgradeablePart.class.isAssignableFrom(partClass);
+            };
+
+            if (playerEntity.isHolding(predicate)) {
                 return ActionResult.PASS;
             }
 
@@ -83,8 +128,12 @@ public class AE2Trinket implements ModInitializer {
             BlockEntity blockEntity = world.getBlockEntity(blockPos);
             Optional<TrinketComponent> trinketComponent = TrinketsApi.getTrinketComponent(playerEntity);
 
+            Vec3d pos = blockHitResult.getPos();
+            Vec3d center = Vec3d.ofCenter(blockPos);
+            Direction hitDirection = Direction.getFacing(pos.x - center.x, pos.y - center.y, pos.z - center.z);
+
             if (blockEntity instanceof IPartHost host
-                    && host.getPart(blockHitResult.getSide()) == null
+                    && checkNoParts(host, hitDirection)
                     && trinketComponent.isPresent()
                     && trinketComponent.get().isEquipped(AEItems.NETWORK_TOOL.asItem())
                     && !playerEntity.isSneaking()) {
@@ -95,7 +144,10 @@ public class AE2Trinket implements ModInitializer {
                 var locator = new NetToolTrinketHostLocator(networkToolStack, blockPos);
 
                 if (nodeHost != null) {
-                    MenuOpener.open(NetworkStatusMenu.NETWORK_TOOL_TYPE, playerEntity, locator);
+                    if (!world.isClient) {
+                        MenuOpener.open(NetworkStatusMenu.NETWORK_TOOL_TYPE, playerEntity, locator);
+                    }
+
                     return ActionResult.SUCCESS;
                 }
             }
@@ -106,6 +158,10 @@ public class AE2Trinket implements ModInitializer {
     }
 
     public record TerminalTrinketHostLocator() implements MenuLocator {
+
+        public static TerminalTrinketHostLocator read(PacketByteBuf byteBuf) {
+            return new TerminalTrinketHostLocator();
+        }
 
         @Override
         public @Nullable <T> T locate(PlayerEntity playerEntity, Class<T> hostInterface) {
@@ -146,13 +202,15 @@ public class AE2Trinket implements ModInitializer {
         public void write(PacketByteBuf byteBuf) {
 
         }
-
-        public static TerminalTrinketHostLocator read(PacketByteBuf byteBuf) {
-            return new TerminalTrinketHostLocator();
-        }
     }
 
     public record NetToolTrinketHostLocator(ItemStack stack, BlockPos pos) implements MenuLocator {
+        public static NetToolTrinketHostLocator read(PacketByteBuf packetByteBuf) {
+            ItemStack stack = packetByteBuf.readItemStack();
+            BlockPos pos = packetByteBuf.readBlockPos();
+            return new NetToolTrinketHostLocator(stack, pos);
+        }
+
         @Override
         public @Nullable <T> T locate(PlayerEntity playerEntity, Class<T> hostInterface) {
             var nodeHost = GridHelper.getNodeHost(playerEntity.getWorld(), this.pos);
@@ -172,27 +230,6 @@ public class AE2Trinket implements ModInitializer {
         public void write(PacketByteBuf packetByteBuf) {
             packetByteBuf.writeItemStack(this.stack);
             packetByteBuf.writeBlockPos(this.pos);
-        }
-
-        public static NetToolTrinketHostLocator read(PacketByteBuf packetByteBuf) {
-            ItemStack stack = packetByteBuf.readItemStack();
-            BlockPos pos = packetByteBuf.readBlockPos();
-            return new NetToolTrinketHostLocator(stack, pos);
-        }
-    }
-
-    private static boolean checkTerminalPreconditions(WirelessTerminalItem item, ItemStack stack, PlayerEntity player) {
-        if (!stack.isEmpty() && stack.getItem() == item) {
-            if (item.getLinkedGrid(stack, player.getWorld(), player) == null) {
-                return false;
-            } else if (!item.hasPower(player, 0.5F, stack)) {
-                player.sendMessage(PlayerMessages.DeviceNotPowered.text(), true);
-                return false;
-            } else {
-                return true;
-            }
-        } else {
-            return false;
         }
     }
 }
