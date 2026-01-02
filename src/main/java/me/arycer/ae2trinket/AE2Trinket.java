@@ -55,6 +55,7 @@ public class AE2Trinket implements ModInitializer {
 
                 if (nodeHost != null) {
                     MenuOpener.open(NetworkStatusMenu.NETWORK_TOOL_TYPE, playerEntity, locator);
+                    return ActionResult.SUCCESS;
                 }
             }
 
