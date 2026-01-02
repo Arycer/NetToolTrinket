@@ -2,7 +2,7 @@ package me.arycer.ae2trinket;
 
 import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.api.networking.GridHelper;
-import appeng.block.networking.CableBusBlock;
+import appeng.api.parts.IPartHost;
 import appeng.core.definitions.AEItems;
 import appeng.core.localization.PlayerMessages;
 import appeng.helpers.WirelessCraftingTerminalMenuHost;
@@ -22,8 +22,7 @@ import me.arycer.ae2trinket.net.c2s.UseTerminalC2S;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketByteBuf;
@@ -32,7 +31,6 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -82,12 +80,11 @@ public class AE2Trinket implements ModInitializer {
             }
 
             BlockPos blockPos = blockHitResult.getBlockPos();
-            BlockState blockState = world.getBlockState(blockPos);
-            Block block = blockState.getBlock();
+            BlockEntity blockEntity = world.getBlockEntity(blockPos);
             Optional<TrinketComponent> trinketComponent = TrinketsApi.getTrinketComponent(playerEntity);
 
-            if (block instanceof CableBusBlock
-                    && validateNetworkToolUse(world, blockPos)
+            if (blockEntity instanceof IPartHost host
+                    && host.getPart(blockHitResult.getSide()) == null
                     && trinketComponent.isPresent()
                     && trinketComponent.get().isEquipped(AEItems.NETWORK_TOOL.asItem())
                     && !playerEntity.isSneaking()) {
@@ -198,19 +195,4 @@ public class AE2Trinket implements ModInitializer {
             return false;
         }
     }
-
-    private static boolean validateNetworkToolUse(World world, BlockPos pos) {
-        // get cable bus at position and check that it not interacting with something like a storage bus or similar
-        BlockState blockState = world.getBlockState(pos);
-        Block block = blockState.getBlock();
-
-        if (!(block instanceof CableBusBlock cableBusBlock)) {
-            return false;
-        }
-
-        System.out.printf("Cable bus class: %s%n", cableBusBlock.getClass().getName());
-
-        return true;
-    }
-
 }
