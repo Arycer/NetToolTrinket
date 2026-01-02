@@ -1,3 +1,5 @@
 {
-  "trinkets.slot.legs.network_tool": "Network Tool Holder"
+  "trinkets.slot.legs.network_tool": "Network Tool Holder",
+  "trinkets.slot.legs.terminal": "Terminal Holder",
+  "key.ae2trinket.terminal_trinket": "Open equipped Terminal"
 }

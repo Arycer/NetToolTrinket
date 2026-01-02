@@ -90,6 +90,10 @@ jar {
     }
 }
 
+loom {
+    accessWidenerPath = file("src/main/resources/ae2trinket.accesswidener")
+}
+
 // configure the maven publication
 publishing {
     publications {

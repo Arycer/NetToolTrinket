@@ -13,9 +13,9 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
 
-public class NetworkToolTrinketRenderer implements TrinketRenderer {
+public class TerminallTrinketRenderer implements TrinketRenderer {
 
-    public static final NetworkToolTrinketRenderer INSTANCE = new NetworkToolTrinketRenderer();
+    public static final TerminallTrinketRenderer INSTANCE = new TerminallTrinketRenderer();
 
     @Override
     public void render(ItemStack stack, SlotReference slotReference, EntityModel<? extends LivingEntity> contextModel, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, LivingEntity entity, float limbAngle, float limbDistance, float tickDelta, float animationProgress, float headYaw, float headPitch) {
@@ -35,10 +35,10 @@ public class NetworkToolTrinketRenderer implements TrinketRenderer {
             z = -0.2;
         }
 
-        matrices.translate(0.2, 0.6, z);
-        matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(225));
+        matrices.translate(-0.15, 0.6, z);
+        matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(180));
 
-        matrices.scale(0.35f, 0.35f, 0.35f);
+        matrices.scale(0.3f, 0.3f, 0.3f);
 
         MinecraftClient.getInstance().getItemRenderer().renderItem(
                 entity,

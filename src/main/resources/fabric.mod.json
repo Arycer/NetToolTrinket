@@ -30,5 +30,6 @@
     "minecraft": "${minecraft_version}",
     "ae2": ">=15.4.10",
     "trinkets": ">=3.7.2"
-  }
+  },
+  "accessWidener": "ae2trinket.accesswidener"
 }
