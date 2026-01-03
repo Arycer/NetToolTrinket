@@ -8,7 +8,9 @@ import appeng.core.localization.PlayerMessages;
 import appeng.helpers.WirelessCraftingTerminalMenuHost;
 import appeng.helpers.WirelessTerminalMenuHost;
 import appeng.items.contents.NetworkToolMenuHost;
+import appeng.items.contents.PortableCellMenuHost;
 import appeng.items.parts.PartItem;
+import appeng.items.tools.powered.PortableCellItem;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -21,7 +23,7 @@ import appeng.parts.networking.CablePart;
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketComponent;
 import dev.emi.trinkets.api.TrinketsApi;
-import me.arycer.ae2trinket.net.c2s.UseTerminalC2S;
+import me.arycer.ae2trinket.net.c2s.UseActionC2S;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -30,6 +32,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -77,31 +80,7 @@ public class AE2Trinket implements ModInitializer {
     public void onInitialize() {
         MenuLocators.register(NetToolTrinketHostLocator.class, NetToolTrinketHostLocator::write, NetToolTrinketHostLocator::read);
         MenuLocators.register(TerminalTrinketHostLocator.class, TerminalTrinketHostLocator::write, TerminalTrinketHostLocator::read);
-
-        ServerPlayNetworking.registerGlobalReceiver(UseTerminalC2S.TYPE, (payload, player, packetSender) -> {
-            Optional<TrinketComponent> trinketComponent = TrinketsApi.getTrinketComponent(player);
-            if (trinketComponent.isPresent()) {
-                WirelessTerminalItem item;
-
-                if (trinketComponent.get().isEquipped(AEItems.WIRELESS_TERMINAL.asItem())) {
-                    item = AEItems.WIRELESS_TERMINAL.asItem();
-                } else if (trinketComponent.get().isEquipped(AEItems.WIRELESS_CRAFTING_TERMINAL.asItem())) {
-                    item = AEItems.WIRELESS_CRAFTING_TERMINAL.asItem();
-                } else {
-                    return;
-                }
-
-                List<Pair<SlotReference, ItemStack>> equipped = trinketComponent.get().getEquipped(item);
-                ItemStack terminalStack = equipped.get(0).getRight();
-
-                if (!checkTerminalPreconditions(item, terminalStack, player)) {
-                    return;
-                }
-
-                var locator = new TerminalTrinketHostLocator();
-                MenuOpener.open(item == AEItems.WIRELESS_TERMINAL.asItem() ? MEStorageMenu.WIRELESS_TYPE : WirelessCraftingTermMenu.TYPE, player, locator);
-            }
-        });
+        MenuLocators.register(CellHostLocator.class, CellHostLocator::write, CellHostLocator::read);
 
         UseBlockCallback.EVENT.register((playerEntity, world, hand, blockHitResult) -> {
             if (playerEntity.isHolding(AEItems.COLOR_APPLICATOR.asItem())
@@ -153,8 +132,102 @@ public class AE2Trinket implements ModInitializer {
             }
 
             return ActionResult.PASS;
-
         });
+
+        ServerPlayNetworking.registerGlobalReceiver(UseActionC2S.TYPE, (payload, player, packetSender) -> {
+            Optional<TrinketComponent> trinketComponent = TrinketsApi.getTrinketComponent(player);
+            if (trinketComponent.isPresent()) {
+                if (payload.action() == UseActionC2S.UseAction.OPEN_TERMINAL) {
+                    handleOpenTerminal(player, trinketComponent.get());
+                } else if (payload.action() == UseActionC2S.UseAction.OPEN_PORTABLE_CELL) {
+                    handleOpenPortableCell(player, trinketComponent.get());
+                }
+            }
+        });
+    }
+
+    private static void handleOpenPortableCell(ServerPlayerEntity player, TrinketComponent trinketComponent) {
+        List<Pair<SlotReference, ItemStack>> equipped = trinketComponent.getEquipped(stack -> stack.getItem() instanceof PortableCellItem);
+        if (equipped.isEmpty()) {
+            return;
+        }
+
+        if (!checkCellPreconditions(equipped.get(0).getRight(), player)) {
+            return;
+        }
+
+        MenuOpener.open(MEStorageMenu.PORTABLE_ITEM_CELL_TYPE, player, new CellHostLocator());
+    }
+
+    private static boolean checkCellPreconditions(ItemStack stack, ServerPlayerEntity player) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof PortableCellItem item)) {
+            return false;
+        }
+
+        if (item.getAECurrentPower(stack) <= 0) {
+            player.sendMessage(PlayerMessages.DeviceNotPowered.text(), true);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private static void handleOpenTerminal(ServerPlayerEntity player, TrinketComponent trinketComponent) {
+        WirelessTerminalItem item;
+
+        if (trinketComponent.isEquipped(AEItems.WIRELESS_TERMINAL.asItem())) {
+            item = AEItems.WIRELESS_TERMINAL.asItem();
+        } else if (trinketComponent.isEquipped(AEItems.WIRELESS_CRAFTING_TERMINAL.asItem())) {
+            item = AEItems.WIRELESS_CRAFTING_TERMINAL.asItem();
+        } else {
+            return;
+        }
+
+        List<Pair<SlotReference, ItemStack>> equipped = trinketComponent.getEquipped(item);
+        ItemStack terminalStack = equipped.get(0).getRight();
+
+        if (!checkTerminalPreconditions(item, terminalStack, player)) {
+            return;
+        }
+
+        var locator = new TerminalTrinketHostLocator();
+        MenuOpener.open(item == AEItems.WIRELESS_TERMINAL.asItem() ? MEStorageMenu.WIRELESS_TYPE : WirelessCraftingTermMenu.TYPE, player, locator);
+    }
+
+    public record CellHostLocator() implements MenuLocator {
+
+        @Override
+        public @Nullable <T> T locate(PlayerEntity playerEntity, Class<T> aClass) {
+            Optional<TrinketComponent> trinketComponent = TrinketsApi.getTrinketComponent(playerEntity);
+            if (trinketComponent.isEmpty()) {
+                return null;
+            }
+
+            PortableCellItem item;
+
+            List<Pair<SlotReference, ItemStack>> equipped = trinketComponent.get().getEquipped(stack -> stack.getItem() instanceof PortableCellItem);
+            if (equipped.isEmpty()) {
+                return null;
+            }
+
+            ItemStack cellStack = equipped.get(0).getRight();
+            item = (PortableCellItem) cellStack.getItem();
+
+            ItemMenuHost menuHost = new PortableCellMenuHost(playerEntity, null, item, cellStack, (player, iSubMenu) -> MenuOpener.open(MEStorageMenu.PORTABLE_ITEM_CELL_TYPE, player, CellHostLocator.this));
+            if (aClass.isInstance(menuHost)) {
+                return aClass.cast(menuHost);
+            }
+
+            return null;
+        }
+
+        public void write(PacketByteBuf byteBuf) {
+
+        }
+
+        public static CellHostLocator read(PacketByteBuf byteBuf) {
+            return new CellHostLocator();
+        }
     }
 
     public record TerminalTrinketHostLocator() implements MenuLocator {

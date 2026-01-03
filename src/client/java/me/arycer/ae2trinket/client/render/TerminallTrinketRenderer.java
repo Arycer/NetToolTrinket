@@ -38,7 +38,7 @@ public class TerminallTrinketRenderer implements TrinketRenderer {
         matrices.translate(-0.15, 0.6, z);
         matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(180));
 
-        matrices.scale(0.3f, 0.3f, 0.3f);
+        matrices.scale(0.2f, 0.2f, 0.2f);
 
         MinecraftClient.getInstance().getItemRenderer().renderItem(
                 entity,

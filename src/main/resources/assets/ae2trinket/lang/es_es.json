@@ -1,6 +1,5 @@
 {
-  "trinkets.slot.legs.network_tool": "Cinturón para herramienta de red",
-  "trinkets.slot.legs.terminal": "Cinturón para terminal",
+  "trinkets.slot.legs.network_belt": "Cinturón de red",
   "key.ae2trinket.terminal_trinket": "Abrir terminal equipado",
   "gui.ae2.NetworkDetails": "Detalles de la red (%d Canales)"
 }

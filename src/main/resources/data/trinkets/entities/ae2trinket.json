@@ -3,7 +3,7 @@
     "player"
   ],
   "slots": [
-    "legs/network_tool",
+    "legs/network_belt",
     "legs/terminal"
   ]
 }
