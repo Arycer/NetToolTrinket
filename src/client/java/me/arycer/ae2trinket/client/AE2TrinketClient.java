@@ -36,6 +36,7 @@ public class AE2TrinketClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> registerRenderers());
 
         KeyBindingHelper.registerKeyBinding(TERMINAL_TRINKET_KEYBINDING);
+        KeyBindingHelper.registerKeyBinding(CELL_TRINKET_KEYBINDING);
 
         ClientTickEvents.END_CLIENT_TICK.register(minecraftClient -> {
             // Terminal keybind
