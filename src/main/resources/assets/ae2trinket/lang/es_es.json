@@ -1,5 +1,6 @@
 {
   "trinkets.slot.legs.network_belt": "Cinturón de red",
   "key.ae2trinket.terminal_trinket": "Abrir terminal equipado",
+  "key.ae2trinket.cell_trinket": "Abrir célula equipada",
   "gui.ae2.NetworkDetails": "Detalles de la red (%d Canales)"
 }
